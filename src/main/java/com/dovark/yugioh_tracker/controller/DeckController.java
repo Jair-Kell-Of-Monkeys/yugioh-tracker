@@ -1,5 +1,7 @@
 package com.dovark.yugioh_tracker.controller;
 
+import com.dovark.yugioh_tracker.dto.DeckCardResponse;
+import com.dovark.yugioh_tracker.dto.DeckResponse;
 import com.dovark.yugioh_tracker.model.Card;
 import com.dovark.yugioh_tracker.model.Deck;
 import com.dovark.yugioh_tracker.model.DeckCard;
@@ -28,33 +30,40 @@ public class DeckController {
     }
 
     @GetMapping
-    public List<Deck> getAllDecks() {
-        return deckRepository.findAll();
+    public List<DeckResponse> getAllDecks() {
+        return deckRepository.findAll().stream()
+                .map(DeckResponse::fromEntity)
+                .toList();
     }
 
     @PostMapping
-    public Deck createDeck(@RequestBody Deck deck) {
-        return deckRepository.save(deck);
+    public DeckResponse createDeck(@RequestBody Deck deck) {
+        Deck saved = deckRepository.save(deck);
+        return DeckResponse.fromEntity(saved);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Deck> getDeckById(@PathVariable Long id) {
+    public ResponseEntity<DeckResponse> getDeckById(@PathVariable Long id) {
         return deckRepository.findById(id)
+                .map(DeckResponse::fromEntity)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}/cards")
-    public ResponseEntity<List<DeckCard>> getDeckCards(@PathVariable Long id) {
+    public ResponseEntity<List<DeckCardResponse>> getDeckCards(@PathVariable Long id) {
         if (!deckRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(deckCardRepository.findByDeckId(id));
+        List<DeckCardResponse> cards = deckCardRepository.findByDeckId(id).stream()
+                .map(DeckCardResponse::fromEntity)
+                .toList();
+        return ResponseEntity.ok(cards);
     }
 
     @PostMapping("/{id}/cards")
-    public ResponseEntity<DeckCard> addCardToDeck(@PathVariable Long id,
-                                                  @RequestBody AddCardRequest request) {
+    public ResponseEntity<DeckCardResponse> addCardToDeck(@PathVariable Long id,
+                                                          @RequestBody AddCardRequest request) {
         Deck deck = deckRepository.findById(id).orElse(null);
         Card card = cardRepository.findById(request.cardId()).orElse(null);
 
@@ -64,6 +73,6 @@ public class DeckController {
 
         DeckCard deckCard = new DeckCard(deck, card, request.quantity(), request.section());
         DeckCard saved = deckCardRepository.save(deckCard);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.ok(DeckCardResponse.fromEntity(saved));
     }
 }
